@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Text Compressor - Ultimate Edition</title>
+    
+    <!-- LAME.js MP3 Compression Engine loaded from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
+    
+    <style>
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            background: #0f0f11; 
+            color: #e4e4e7; 
+            max-width: 1000px; 
+            margin: 0 auto; 
+            padding: 30px 20px; 
+            line-height: 1.5; 
+        }
+        h1 { color: #ffffff; margin-bottom: 5px; font-size: 2.2rem; }
+        .subtitle { color: #a1a1aa; margin-bottom: 30px; font-size: 1rem; }
+        h2 { color: #ffffff; border-bottom: 1px solid #27272a; padding-bottom: 8px; margin-top: 0; font-size: 1.3rem;}
+        
+        .panel {
+            background: #18181b; 
+            border: 1px solid #27272a;
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); 
+        }
+
+        .header-encode { color: #60a5fa; border-bottom-color: #60a5fa; }
+        .header-decode { color: #4ade80; border-bottom-color: #4ade80; }
+
+        .grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+        @media (min-width: 768px) {
+            .grid { grid-template-columns: 1fr 1fr; }
+        }
+
+        .control-group { margin-bottom: 15px; }
+        label { font-weight: 600; display: block; margin-bottom: 6px; color: #a1a1aa; font-size: 0.9rem;}
+        
+        /* Drag and Drop Zone */
+        .drop-zone {
+            background: #27272a;
+            border: 2px dashed #3f3f46;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px;
+            color: #a1a1aa;
+            transition: all 0.2s;
+            position: relative;
+            cursor: pointer;
+        }
+        .drop-zone.dragover {
+            background: #3b82f6;
+            border-color: #60a5fa;
+            color: #ffffff;
+        }
+        .drop-zone input[type="file"] {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        textarea { 
+            width: 100%; 
+            height: 120px; 
+            background: #09090b; 
+            color: #39ff14; 
+            border: 1px solid #27272a; 
+            border-radius: 6px; 
+            padding: 12px; 
+            font-family: monospace; 
+            box-sizing: border-box; 
+            resize: vertical; 
+            font-size: 0.8rem;
+            margin-bottom: 10px; 
+        }
+        
+        /* Buttons */
+        .btn { 
+            background: #2563eb; 
+            color: white; 
+            border: none; 
+            padding: 12px 20px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 0.95rem; 
+            font-weight: 600;
+            transition: all 0.2s; 
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn:hover { background: #1d4ed8; }
+        .btn:active { transform: scale(0.98); }
+        .btn-success { background: #16a34a; }
+        .btn-success:hover { background: #15803d; }
+        .btn-secondary { background: #3f3f46; }
+        .btn-secondary:hover { background: #52525b; }
+        
+        .flex-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;}
+        .status { margin-top: 10px; font-size: 0.85rem; font-weight: 500; }
+        .error { color: #f87171; }
+        .success { color: #4ade80; }
+        .info { color: #60a5fa; }
+        
+        /* Audio Editor Specifics */
+        audio { width: 100%; margin: 15px 0; outline: none; border-radius: 6px; }
+        
+        .slider-container { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
+        .slider-container label { width: 80px; margin-bottom: 0; }
+        .slider-container input[type="range"] { flex-grow: 1; accent-color: #60a5fa; }
+        .slider-value { width: 60px; text-align: right; font-family: monospace; color: #38bdf8; }
+        
+        select {
+            background: #27272a;
+            color: #fff;
+            border: 1px solid #3f3f46;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            outline: none;
+            width: 100%;
+        }
+        canvas {
+            width: 100%;
+            height: 80px;
+            background: #09090b;
+            border-radius: 6px;
+            border: 1px solid #27272a;
+            margin-bottom: 15px;
+        }
+        
+        /* Decoder Specifics */
+        .decoder-audio-container {
+            background: #09090b;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #27272a;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Audio Text Compressor <span style="font-size: 1rem; color:#a1a1aa; font-weight:normal;">Ultimate Edition</span></h1>
+    <div class="subtitle">Compress audio down to 8kbps, encode it to text, and decode it back instantly.</div>
+
+    <!-- ============================================== -->
+    <!-- WORKSTATION 1: THE ENCODER & COMPRESSOR       -->
+    <!-- ============================================== -->
+    <div class="panel" id="encoderStation">
+        <h2 class="header-encode">Station 1: Edit, Compress & Text-ify</h2>
+        
+        <div class="control-group" style="max-width: 400px;">
+            <label>1. Import Original Audio (MP3, WAV, M4A):</label>
+            <div class="drop-zone" id="dropZone">
+                <span id="dropText">Drag & Drop an audio file here<br>or click to browse</span>
+                <input type="file" id="audioInput" accept="audio/*">
+            </div>
+            <div id="importStatus" class="status"></div>
+        </div>
+
+        <div id="editorWorkspace" style="display: none; border-top: 1px solid #27272a; padding-top: 20px; margin-top: 20px;">
+            <label>2. Preview & Trim</label>
+            <canvas id="waveformCanvas"></canvas>
+            <audio id="audioPlayer" controls></audio>
+
+            <div class="grid" style="margin-top: 15px;">
+                <!-- TRIMMING -->
+                <div>
+                    <h3 style="margin-top: 0; font-size: 1rem; color: #a1a1aa;">Crop Audio</h3>
+                    <div class="slider-container">
+                        <label for="startSlider">Start Time</label>
+                        <input type="range" id="startSlider" min="0" max="100" value="0" step="0.01" oninput="updateSliders()">
+                        <span class="slider-value" id="startVal">0.00s</span>
+                    </div>
+                    <div class="slider-container">
+                        <label for="endSlider">End Time</label>
+                        <input type="range" id="endSlider" min="0" max="100" value="100" step="0.01" oninput="updateSliders()">
+                        <span class="slider-value" id="endVal">0.00s</span>
+                    </div>
+                </div>
+
+                <!-- MP3 COMPRESSION TUNING -->
+                <div>
+                    <h3 style="margin-top: 0; font-size: 1rem; color: #a1a1aa;">Extreme Compression Settings</h3>
+                    <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div class="control-group">
+                            <label for="bitrateSelect">MP3 Bitrate</label>
+                            <select id="bitrateSelect">
+                                <option value="8">8 kbps (Microscopic / Lo-Fi Radio)</option>
+                                <option value="16">16 kbps (Ultra Tiny / Voicemail)</option>
+                                <option value="32" selected>32 kbps (Tiny - Best for text)</option>
+                                <option value="64">64 kbps (Small - Good)</option>
+                                <option value="96">96 kbps (Medium)</option>
+                                <option value="128">128 kbps (High/Music)</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label for="channelSelect">Channels</label>
+                            <select id="channelSelect">
+                                <option value="1" selected>Mono (Half size)</option>
+                                <option value="2">Stereo</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn" style="width: 100%; margin-top: 15px;" onclick="compressAndEncode()">
+                Process, Compress to MP3 & Generate Text
+            </button>
+        </div>
+
+        <!-- EXPORT OUTPUT -->
+        <div id="exportSection" style="display: none; border-top: 1px dashed #3f3f46; padding-top: 20px; margin-top: 20px;">
+            <h3 style="margin-top:0; font-size: 1.1rem; color: #60a5fa;">3. Your Text Code is Ready</h3>
+            <p style="font-size: 0.85rem; color: #a1a1aa; margin-top:-5px;" id="sizeStats"></p>
+            <textarea id="base64Output" readonly placeholder="Text will generate here..."></textarea>
+            <div class="flex-row">
+                <button class="btn btn-success" id="copyBtn" onclick="copyExportText()">Copy Text Code</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ============================================== -->
+    <!-- WORKSTATION 2: THE DECODER (RECEIVER)          -->
+    <!-- ============================================== -->
+    <div class="panel" id="decoderStation">
+        <h2 class="header-decode">Station 2: Text-to-MP3 Receiver</h2>
+        
+        <div class="control-group">
+            <label for="base64Input">Paste the text string you received here:</label>
+            <textarea id="base64Input" placeholder="Paste the massive block of Base64 text here..."></textarea>
+        </div>
+        
+        <div class="flex-row">
+            <button class="btn btn-success" onclick="decodeBase64()">Decode Text into Audio</button>
+        </div>
+        
+        <div id="decodeStatus" class="status"></div>
+
+        <div id="decoderPlayerContainer" class="decoder-audio-container" style="display: none;">
+            <h3 style="margin-top:0; font-size: 1rem; color: #4ade80;">Recovered MP3 File</h3>
+            <audio id="decoderPlayer" controls></audio>
+            <div class="flex-row" style="margin-top: 10px;">
+                <button class="btn btn-secondary" id="downloadDecodedBtn" style="font-size: 0.85rem;">Download .mp3 File</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // GLOBAL AUDIO CONTEXT & DRAG DROP
+        // ==========================================
+        let audioContext;
+        let originalAudioBuffer = null;
+        let processedMp3Blob = null;
+        let originalFileName = "audio";
+
+        function initAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        // Drag and Drop Logic
+        const dropZone = document.getElementById('dropZone');
+        const audioInput = document.getElementById('audioInput');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            audioInput.files = files;
+            handleFileSelect(files[0]);
+        });
+
+        audioInput.addEventListener('change', (e) => {
+            handleFileSelect(e.target.files[0]);
+        });
+
+
+        // ==========================================
+        // STATION 1: ENCODER LOGIC
+        // ==========================================
+
+        async function handleFileSelect(file) {
+            initAudioContext();
+            const statusDiv = document.getElementById('importStatus');
+            if (!file) return;
+
+            document.getElementById('dropText').innerHTML = `<b>${file.name}</b> loaded!`;
+            originalFileName = file.name.split('.').slice(0, -1).join('.') || "audio";
+            statusDiv.className = "status info";
+            statusDiv.innerHTML = "Decoding audio file...";
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                originalAudioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                setupEditor(originalAudioBuffer);
+                statusDiv.className = "status success";
+                statusDiv.innerHTML = `Loaded successfully!`;
+            } catch (err) {
+                console.error(err);
+                statusDiv.className = "status error";
+                statusDiv.innerHTML = "Error decoding audio file. Make sure it's an audio format.";
+            }
+        }
+
+        function setupEditor(buffer) {
+            document.getElementById('editorWorkspace').style.display = 'block';
+            document.getElementById('exportSection').style.display = 'none';
+
+            const startSlider = document.getElementById('startSlider');
+            const endSlider = document.getElementById('endSlider');
+            
+            startSlider.max = buffer.duration;
+            startSlider.value = 0;
+            endSlider.max = buffer.duration;
+            endSlider.value = buffer.duration;
+
+            updateSliders();
+            drawWaveform(buffer);
+
+            const player = document.getElementById('audioPlayer');
+            const wavData = createPreviewWav(buffer, buffer.sampleRate);
+            const blob = new Blob([wavData], { type: 'audio/wav' });
+            player.src = URL.createObjectURL(blob);
+        }
+
+        function updateSliders() {
+            const startSlider = document.getElementById('startSlider');
+            const endSlider = document.getElementById('endSlider');
+            if (parseFloat(startSlider.value) >= parseFloat(endSlider.value)) {
+                startSlider.value = parseFloat(endSlider.value) - 0.05;
+            }
+            document.getElementById('startVal').innerText = parseFloat(startSlider.value).toFixed(2) + "s";
+            document.getElementById('endVal').innerText = parseFloat(endSlider.value).toFixed(2) + "s";
+        }
+
+        function drawWaveform(buffer) {
+            const canvas = document.getElementById('waveformCanvas');
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width = canvas.offsetWidth;
+            const height = canvas.height = canvas.offsetHeight;
+            
+            ctx.fillStyle = '#09090b';
+            ctx.fillRect(0, 0, width, height);
+
+            const data = buffer.getChannelData(0);
+            const step = Math.ceil(data.length / width);
+            const amp = height / 2;
+
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = '#60a5fa';
+
+            ctx.beginPath();
+            ctx.moveTo(0, amp);
+            for (let i = 0; i < width; i++) {
+                let min = 1.0, max = -1.0;
+                for (let j = 0; j < step; j++) {
+                    const datum = data[(i * step) + j];
+                    if (datum < min) min = datum;
+                    if (datum > max) max = datum;
+                }
+                ctx.lineTo(i, (1 + min) * amp);
+                ctx.lineTo(i, (1 + max) * amp);
+            }
+            ctx.stroke();
+        }
+
+        async function compressAndEncode() {
+            if (!originalAudioBuffer) return;
+            if (typeof lamejs === 'undefined') {
+                alert("lamejs MP3 encoder failed to load. Please ensure you have an internet connection.");
+                return;
+            }
+
+            const startTime = parseFloat(document.getElementById('startSlider').value);
+            const endTime = parseFloat(document.getElementById('endSlider').value);
+            const targetKbps = parseInt(document.getElementById('bitrateSelect').value);
+            const mono = parseInt(document.getElementById('channelSelect').value) === 1;
+
+            const duration = endTime - startTime;
+            if (duration <= 0) return;
+
+            // Determine sample rate based on target bitrate to allow ultra-low compression
+            let targetSampleRate = 44100;
+            if (targetKbps <= 16) {
+                targetSampleRate = 8000; // MPEG-2.5 requires 8000Hz for 8/16kbps
+            } else if (targetKbps <= 32) {
+                targetSampleRate = 22050; // MPEG-2 requires 22050Hz for 32kbps
+            }
+
+            const numChannels = mono ? 1 : originalAudioBuffer.numberOfChannels;
+            
+            // Downsample via OfflineAudioContext
+            const offlineCtx = new OfflineAudioContext(numChannels, duration * targetSampleRate, targetSampleRate);
+            const source = offlineCtx.createBufferSource();
+            source.buffer = originalAudioBuffer;
+            source.connect(offlineCtx.destination);
+            source.start(0, startTime, duration);
+
+            try {
+                const renderedBuffer = await offlineCtx.startRendering();
+                
+                // Compress
+                const mp3Uint8Array = encodeToMp3(renderedBuffer, targetKbps, targetSampleRate);
+                
+                // Base64 Text Convert
+                const base64String = encodeArrayBufferToBase64(mp3Uint8Array);
+                
+                // UI Update
+                const base64Output = document.getElementById('base64Output');
+                base64Output.value = base64String;
+
+                const kbSize = (mp3Uint8Array.byteLength / 1024).toFixed(1);
+                document.getElementById('sizeStats').innerHTML = 
+                    `File Size: <b style="color: #4ade80;">${kbSize} KB</b> | Text Length: <b style="color: #60a5fa;">${base64String.length.toLocaleString()} chars</b>`;
+
+                document.getElementById('exportSection').style.display = 'block';
+                
+                // Reset copy button
+                const copyBtn = document.getElementById('copyBtn');
+                copyBtn.innerHTML = "Copy Text Code";
+                copyBtn.className = "btn btn-success";
+                
+            } catch (err) {
+                console.error(err);
+                alert("Processing failed: " + err.message);
+            }
+        }
+
+        function encodeToMp3(audioBuffer, kbps, sampleRate) {
+            const numChannels = audioBuffer.numberOfChannels;
+            const mp3encoder = new lamejs.Mp3Encoder(numChannels, sampleRate, kbps);
+            const mp3Data = [];
+
+            const left = floatToInt16(audioBuffer.getChannelData(0));
+            const right = numChannels === 2 ? floatToInt16(audioBuffer.getChannelData(1)) : null;
+
+            const sampleBlockSize = 1152;
+            for (let i = 0; i < left.length; i += sampleBlockSize) {
+                const leftChunk = left.subarray(i, i + sampleBlockSize);
+                let mp3buf;
+                if (numChannels === 2) {
+                    const rightChunk = right.subarray(i, i + sampleBlockSize);
+                    mp3buf = mp3encoder.encodeBuffer(leftChunk, rightChunk);
+                } else {
+                    mp3buf = mp3encoder.encodeBuffer(leftChunk);
+                }
+                if (mp3buf.length > 0) mp3Data.push(mp3buf);
+            }
+            
+            const flushBuf = mp3encoder.flush();
+            if (flushBuf.length > 0) mp3Data.push(flushBuf);
+
+            let totalLength = 0;
+            mp3Data.forEach(chunk => totalLength += chunk.length);
+            const combined = new Uint8Array(totalLength);
+            let offset = 0;
+            mp3Data.forEach(chunk => {
+                combined.set(new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength), offset);
+                offset += chunk.length;
+            });
+            
+            return combined;
+        }
+
+        function floatToInt16(input) {
+            const output = new Int16Array(input.length);
+            for (let i = 0; i < input.length; i++) {
+                let s = Math.max(-1, Math.min(1, input[i]));
+                output[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            }
+            return output;
+        }
+
+        function encodeArrayBufferToBase64(uint8Array) {
+            let binary = '';
+            for (let i = 0; i < uint8Array.byteLength; i++) {
+                binary += String.fromCharCode(uint8Array[i]);
+            }
+            return window.btoa(binary);
+        }
+
+        function copyExportText() {
+            const textarea = document.getElementById('base64Output');
+            textarea.select();
+            document.execCommand('copy');
+            
+            const btn = document.getElementById('copyBtn');
+            btn.innerHTML = "✓ Copied to Clipboard";
+            btn.className = "btn"; // Change to blue
+            
+            setTimeout(() => {
+                btn.innerHTML = "Copy Text Code";
+                btn.className = "btn btn-success";
+            }, 3000);
+        }
+
+
+        // ==========================================
+        // STATION 2: DECODER LOGIC
+        // ==========================================
+
+        function decodeBase64() {
+            const inputArea = document.getElementById('base64Input');
+            const statusDiv = document.getElementById('decodeStatus');
+            const container = document.getElementById('decoderPlayerContainer');
+            const player = document.getElementById('decoderPlayer');
+            const downloadBtn = document.getElementById('downloadDecodedBtn');
+
+            const base64Data = inputArea.value.trim();
+            if (!base64Data) {
+                statusDiv.className = "status error";
+                statusDiv.innerHTML = "Please paste a text string first.";
+                return;
+            }
+
+            try {
+                let cleanBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
+                const binaryString = atob(cleanBase64);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+
+                const blob = new Blob([bytes], { type: 'audio/mp3' });
+                const url = URL.createObjectURL(blob);
+
+                player.src = url;
+                container.style.display = "block";
+                
+                downloadBtn.onclick = function() {
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = "decoded_audio.mp3";
+                    link.click();
+                };
+
+                statusDiv.className = "status success";
+                statusDiv.innerHTML = "Text successfully decoded into an MP3 file!";
+            } catch (error) {
+                console.error(error);
+                statusDiv.className = "status error";
+                statusDiv.innerHTML = "Invalid text format. Make sure you copied the entire string.";
+            }
+        }
+
+
+        // ==========================================
+        // PREVIEW HELPER
+        // ==========================================
+        function createPreviewWav(buffer, sampleRate) {
+            const numOfChan = buffer.numberOfChannels;
+            let result = numOfChan === 2 ? interleave(buffer.getChannelData(0), buffer.getChannelData(1)) : buffer.getChannelData(0);
+            const bufferLength = result.length * 2;
+            const rBuffer = new ArrayBuffer(44 + bufferLength);
+            const view = new DataView(rBuffer);
+            
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + bufferLength, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, numOfChan, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * numOfChan * 2, true);
+            view.setUint16(32, numOfChan * 2, true);
+            view.setUint16(34, 16, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, bufferLength, true);
+            
+            let offset = 44;
+            for (let i = 0; i < result.length; i++, offset += 2) {
+                let s = Math.max(-1, Math.min(1, result[i]));
+                view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+            }
+            return rBuffer;
+        }
+
+        function interleave(inputL, inputR) {
+            const length = inputL.length + inputR.length;
+            const result = new Float32Array(length);
+            let index = 0, inputIndex = 0;
+            while (index < length) {
+                result[index++] = inputL[inputIndex];
+                result[index++] = inputR[inputIndex];
+                inputIndex++;
+            }
+            return result;
+        }
+
+        function writeString(view, offset, string) {
+            for (let i = 0; i < string.length; i++) view.setUint8(offset + i, string.charCodeAt(i));
+        }
+    </script>
+</body>
+</html>
